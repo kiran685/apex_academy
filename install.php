@@ -30,18 +30,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $dbname = $_POST['dbname'] ?? 'apex_academy';
 
     try {
-        // Connect to server (without DB name first, to create it)
-        $dsn = "mysql:host=$host;port=$port;charset=utf8mb4";
-        $pdo = new PDO($dsn, $user, $pass, [
-            PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
-            PDO::ATTR_TIMEOUT => 5
-        ]);
-
-        // Create Database
-        $pdo->exec("CREATE DATABASE IF NOT EXISTS `$dbname` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
-        
-        // Select Database
-        $pdo->exec("USE `$dbname`");
+        // Try connecting directly to the specified database first (required for free hosting where CREATE DATABASE is blocked)
+        try {
+            $dsn = "mysql:host=$host;port=$port;dbname=$dbname;charset=utf8mb4";
+            $pdo = new PDO($dsn, $user, $pass, [
+                PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+                PDO::ATTR_TIMEOUT => 5
+            ]);
+        } catch (PDOException $db_err) {
+            // If direct connection fails, try connecting to server root to create the database (e.g., local development)
+            $dsn = "mysql:host=$host;port=$port;charset=utf8mb4";
+            $pdo = new PDO($dsn, $user, $pass, [
+                PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+                PDO::ATTR_TIMEOUT => 5
+            ]);
+            
+            // Create Database
+            $pdo->exec("CREATE DATABASE IF NOT EXISTS `$dbname` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
+            
+            // Select Database
+            $pdo->exec("USE `$dbname`");
+        }
 
         // Read and execute schema.sql
         $schema_path = __DIR__ . '/schema.sql';
